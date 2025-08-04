@@ -1,66 +1,85 @@
 @extends('layouts.template')
 
 @section('content')
-    <div id="msg-success"></div>
-    <table class="table table-striped table-bordered table-hover">
-        <thead>
-            <tr>
-                <th>No</th>
-                <th>Nama</th>
-                <th>Stok</th>
-                <th class="text-center">Aksi</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php
-                $no = 1;
-            @endphp
-            @foreach ($medicines as $item)
-                <tr>
-                    <td>{{ $no++ }}</td>
-                    <td>{{ $item['name'] }}</td>
-                    <td
-                        style="{{ $item['stock'] <= 3 ? 'background: red; color: white' : 'background: none; color: black' }}">
-                        {{ $item['stock'] }}</td>
-                    <td class="d-flex justify-content-center">
-                        <div onclick="edit({{$item['id']}})" class="btn btn-primary me-3" style="cursor: pointer">Tambah
-                            Stock</div>
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+    <div id="msg-success" class="my-3"></div>
 
-    <div class="modal" tabindex="-1" id="edit-stock">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="mb-4">Daftar Stok Obat</h5>
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>No</th>
+                        <th>Nama</th>
+                        <th>Stok</th>
+                        <th class="text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php $no = 1; @endphp
+                    @foreach ($medicines as $item)
+                        <tr>
+                            <td>{{ $no++ }}</td>
+                            <td>{{ $item['name'] }}</td>
+                            <td>
+                                @if ($item['stock'] <= 3)
+                                    <span class="badge bg-danger">
+                                        {{ $item['stock'] }} (Kritis)
+                                    </span>
+                                @else
+                                    <span class="badge bg-success">
+                                        {{ $item['stock'] }}
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                <button onclick="edit({{ $item['id'] }})"
+                                    class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 mx-auto"
+                                    style="min-width: 120px">
+                                    <i class="bi bi-plus-circle"></i> Tambah Stok
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="edit-stock" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Ubah Data Stock</h5>
-                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
                 <form method="POST" id="form-stock">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Ubah Data Stok</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
                     <div class="modal-body">
                         <div id="msg"></div>
-
                         <input type="hidden" name="id" id="id">
                         <div class="mb-3">
-                            <label class="form-label" for="name">Nama Obat :</label>
+                            <label for="name" class="form-label">Nama Obat :</label>
                             <input type="text" class="form-control" id="name" name="name" disabled>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="stock">Stock Obat :</label>
+                            <label for="stock" class="form-label">Stok Baru :</label>
                             <input type="number" class="form-control" id="stock" name="stock">
+                        </div>
+                        <div class="text-center" id="loading" style="display: none;">
+                            <div class="spinner-border text-primary" role="status"></div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Close</button>
-                        <button class="btn btn-primary" type="submit">Simpan</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 @endsection
+
 @push('script')
     <script type="text/javascript">
         $.ajaxSetup({
@@ -70,41 +89,36 @@
         });
 
         function edit(id) {
-            var url = "{{ route('medicine.stock.edit', ":id") }}";
-            url = url.replace(':id', id);
-            $.ajax({
-                type: "GET",
-                url: url,
-                dataType: 'json',
-                success: function(res) {
-                    $('#edit-stock').modal('show');
-                    $('#id').val(res.id);
-                    $('#name').val(res.name);
-                    $('#stock').val(res.stock);
-                }
+            const url = "{{ route('medicine.stock.edit', ':id') }}".replace(':id', id);
+            $.get(url, function(res) {
+                $('#id').val(res.id);
+                $('#name').val(res.name);
+                $('#stock').val(res.stock);
+                $('#edit-stock').modal('show');
             });
         }
+
         $('#form-stock').submit(function(e) {
             e.preventDefault();
+            $('#loading').show();
 
-            var id = $('#id').val();
-            var urlForm = "{{ route('medicine.stock.update', ":id") }}";
-            urlForm = urlForm.replace(':id', id);
+            const id = $('#id').val();
+            const url = "{{ route('medicine.stock.update', ':id') }}".replace(':id', id);
+            const data = { stock: $('#stock').val() };
 
-            var data = {
-                stock: $('#stock').val(),
-            }
             $.ajax({
                 type: 'PATCH',
-                url: urlForm,
+                url: url,
                 data: data,
                 cache: false,
-                success: (data) => {
-                    $("#edit-stock").modal('hide');
-                    sessionStorage.reloadAfterPageLoad = true;
+                success: function() {
+                    $('#loading').hide();
+                    $('#edit-stock').modal('hide');
+                    sessionStorage.setItem('stockUpdated', true);
                     window.location.reload();
                 },
                 error: function(data) {
+                    $('#loading').hide();
                     $('#msg').attr("class", "alert alert-danger");
                     $('#msg').text(data.responseJSON.message);
                 }
@@ -112,11 +126,11 @@
         });
 
         $(function() {
-            if (sessionStorage.reloadAfterPageLoad) {
-                $('#msg-success').attr("class", "alert alert-success");
-                $("#msg-success").text("Berhasil menambahkan data stock!");
-                sessionStorage.clear();
+            if (sessionStorage.getItem('stockUpdated')) {
+                $('#msg-success').addClass("alert alert-success");
+                $('#msg-success').text("Berhasil menambahkan data stok!");
+                sessionStorage.removeItem('stockUpdated');
             }
-        })
+        });
     </script>
 @endpush
